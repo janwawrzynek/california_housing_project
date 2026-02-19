@@ -1,0 +1,18 @@
+# Data and Models
+datasets/
+data/
+models/*.pkl
+
+# Python environment and cache
+__pycache__/
+.venv/
+env/
+venv/
+*.py[cod]
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Notebook checkpoints
+.ipynb_checkpoints/
