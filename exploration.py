@@ -37,3 +37,4 @@ plt.show()
 
 print(f"Full rows: {len(housing_full)}")
 print(f"Filtered rows: {len(housing_filtered)}")
+print(housing_filtered.head())
