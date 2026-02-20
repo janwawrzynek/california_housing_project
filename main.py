@@ -27,9 +27,7 @@ if __name__ == "__main__":
     print("Loading data...")
     housing_full = load_housing_data()
     housing_full.to_parquet("datasets/housing/housing_full.parquet")
-    # After noticing in the exploration.py file that there are some median incomes that are capped, I will remove these from the dataset, to prevent the model
-    # from learning this "artificial" cap and thus improving generalization to other datasets.
-    cap_values = [500000, 450000, 350000, 280000] 
+
 
 
     # Create income categories for stratification (predefined bins to avoid data snooping)
@@ -37,8 +35,16 @@ if __name__ == "__main__":
                                     bins=[0., 1.5, 3.0, 4.5, 6., np.inf],
                                     labels=[1, 2, 3, 4, 5])
     
-    housing_filtered = housing_full[~housing_full["median_house_value"].isin(cap_values)].reset_index(drop=True)
+    # After noticing in the exploration.py file that there are some median incomes that are capped, I will remove these from the dataset, to prevent the model
+    # from learning this "artificial" cap and thus improving generalization to other datasets.
+    cap_values = [ 450000, 350000, 280000] 
+    max_income = 500000
 
+    # 2. Filter out the capped values
+    housing_filtered = housing_full[housing_full["median_house_value"] < max_income].copy()
+
+    housing_filtered = housing_filtered[~housing_filtered["median_house_value"].isin(cap_values)].reset_index(drop=True)
+    housing_filtered.to_parquet("datasets/housing/housing_filtered.parquet")
     
 
     
