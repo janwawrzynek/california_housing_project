@@ -62,6 +62,7 @@ if __name__ == "__main__":
 
     # Save the Datasets to prevent data leakage and allow for reproducability.
     housing_train_features.to_csv("datasets/housing/housing_train_features.csv", index=False)
+    housing_train_labels.to_csv("datasets/housing/housing_train_labels.csv", index=False)
     # Test
     housing_test_features = strat_test_set.drop("median_house_value", axis=1)
     housing_test_labels = strat_test_set["median_house_value"].copy()
@@ -75,7 +76,7 @@ if __name__ == "__main__":
     model = create_full_pipeline()
     
     print("Training...")
-    model.fit(X_train, y_train)
+    model.fit(housing_train_features, housing_train_labels)
     
     print("Saving model to models/housing_model.pkl...")
     joblib.dump(model, "models/housing_model.pkl")
