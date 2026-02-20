@@ -26,6 +26,7 @@ def load_housing_data():
 if __name__ == "__main__":
     print("Loading data...")
     housing_full = load_housing_data()
+    housing_full.to_parquet("datasets/housing/housing_full.parquet")
     # After noticing in the exploration.py file that there are some median incomes that are capped, I will remove these from the dataset, to prevent the model
     # from learning this "artificial" cap and thus improving generalization to other datasets.
     cap_values = [500000, 450000, 350000, 280000] 
