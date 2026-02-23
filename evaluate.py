@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from src.pipeline import create_full_pipeline # Using the blueprint factory
+import time
 
 # 1. Load the FULL training data block (80% of total data)
 # This is the combined set you saved in main.py
@@ -32,6 +33,8 @@ for m_type in model_types:
     
     # Run Cross-Validation
     # This fits/evaluates the blueprint 5 times on 5 different folds
+    start_time = time.perf_counter()
+
     cv_scores = cross_val_score(
         pipeline_blueprint, 
         X_train_full, 
@@ -39,6 +42,9 @@ for m_type in model_types:
         scoring="neg_root_mean_squared_error",
         cv=skf.split(X_train_full, income_cat)
     )
+
+    end_time = time.perf_counter()
+    duration = end_time - start_time
     
     # Convert negative scores to positive RMSE
     rmse_scores = -cv_scores
@@ -46,7 +52,7 @@ for m_type in model_types:
     
     print(f"  Mean RMSE: ${rmse_scores.mean():,.2f}")
     print(f"  Std Dev:   ${rmse_scores.std():,.2f}")
-
+    print(f"  Training Time: {duration:.2f} seconds")
     # ... [Data Cleaning & Splitting Logic Above] ...
 
     # --- PRODUCTION TOGGLE ---
