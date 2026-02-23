@@ -46,22 +46,25 @@ def get_preprocessing_pipeline():
 
     return preprocessing
 
-def create_full_pipeline(hyperparams=None):
-    """Creates the final end-to-end model pipeline."""
-    if hyperparams is None:
-        # High-performance defaults
-        hyperparams = {
-            'n_estimators': 500,
-            'learning_rate': 0.05,
-            'max_depth': 6,
-            'n_jobs': -1 # Utilize all CPU cores
-        }
-    
+def create_full_pipeline(model_type="xgboost", hyperparams=None):
+    """
+    Creates an end-to-end pipeline with a switchable regressor.
+    """
     preprocessing = get_preprocessing_pipeline()
     
-    full_pipeline = Pipeline([
-        ("preprocessing", preprocessing),
-        ("regressor", XGBRegressor(**hyperparams))
-    ])
+    if model_type == "xgboost":
+        if hyperparams is None:
+            hyperparams = {'n_estimators': 500, 'learning_rate': 0.05, 'max_depth': 6, 'n_jobs': -1}
+        regressor = XGBRegressor(**hyperparams)
     
-    return full_pipeline
+    elif model_type == "linear":
+        # Linear Regression typically doesn't need many hyperparams for this case
+        regressor = LinearRegression()
+    
+    else:
+        raise ValueError(f"Unknown model type: {model_type}")
+
+    return Pipeline([
+        ("preprocessing", preprocessing),
+        ("regressor", regressor)
+    ])

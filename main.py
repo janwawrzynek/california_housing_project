@@ -70,6 +70,14 @@ if __name__ == "__main__":
     # Save the Datasets to prevent data leakage and allow for reproducability.
     housing_train_features.to_csv("datasets/housing/housing_train_features.csv", index=False)
     housing_train_labels.to_csv("datasets/housing/housing_train_labels.csv", index=False)
+    # Validation
+    housing_val_features = strat_val_set.drop("median_house_value", axis=1)
+    housing_val_labels = strat_val_set["median_house_value"].copy()
+
+    housing_val_features.to_csv("datasets/housing/housing_val_features.csv", index=False)
+    housing_val_labels.to_csv("datasets/housing/housing_val_labels.csv", index=False)
+
+
     # Test
     housing_test_features = strat_test_set.drop("median_house_value", axis=1)
     housing_test_labels = strat_test_set["median_house_value"].copy()
@@ -78,13 +86,22 @@ if __name__ == "__main__":
     housing_test_labels.to_csv("datasets/housing/housing_test_labels.csv", index=False)
     print("✓ Data splits saved to datasets/housing/ using housing_* convention")
     
-    
-    print("Initializing high-performance XGBoost pipeline...")
-    model = create_full_pipeline()
-    
-    print("Training...")
-    model.fit(housing_train_features, housing_train_labels)
-    
-    print("Saving model to models/housing_model.pkl...")
-    joblib.dump(model, "models/housing_model.pkl")
-    print("Success!")
+    ###########################################################
+    model_types = ["xgboost", "linear" ]
+    for m_type in model_types:
+        print(f"\n--- Training {m_type.upper()} Model ---")
+        
+        # Create the specific pipeline
+        model = create_full_pipeline(model_type=m_type)
+        
+        # Fit on your existing features and labels
+        print(f"Fitting {m_type}...")
+        model.fit(housing_train_features, housing_train_labels)
+        
+        # Save each model with a unique name in your models/ folder
+        model_filename = f"models/housing_model_{m_type}.pkl"
+        joblib.dump(model, model_filename)
+        print(f"✓ Success! Model saved as {model_filename}")
+
+    print("\nAll models trained and serialized successfully.")
+
