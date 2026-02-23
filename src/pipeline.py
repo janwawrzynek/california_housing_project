@@ -4,6 +4,9 @@ from sklearn.compose import ColumnTransformer, make_column_selector
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, FunctionTransformer
 from xgboost import XGBRegressor  
+# Compare results with the LinearRegressor baseline
+from sklearn.linear_model import LinearRegression
+
 
 # Import  custom transformers and helper functions
 from src.transformers import ClusterSimilarity, column_ratio, ratio_name
