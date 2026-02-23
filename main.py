@@ -1,18 +1,16 @@
-# main.py
 import joblib
 from pathlib import Path
 import numpy as np
-import matplotlib.pyplot as plt
+import pandas as pd
 import tarfile
 import urllib.request
-import matplotlib.pyplot as plt
-from sklearn.impute import SimpleImputer
-import pandas as pd
-from src.pipeline import create_full_pipeline
 from sklearn.model_selection import train_test_split
 
+# Import your factory and custom logic
+from src.pipeline import create_full_pipeline
 
 def load_housing_data():
+    """Fetches and loads the raw housing data."""
     tarball_path = Path("datasets/housing.tgz")
     if not tarball_path.is_file():
         Path("datasets").mkdir(parents=True, exist_ok=True)
@@ -22,86 +20,63 @@ def load_housing_data():
             housing_tarball.extractall(path="datasets", filter="data")
     return pd.read_csv(Path("datasets/housing/housing.csv"))
 
-
 if __name__ == "__main__":
-    print("Loading data...")
+    # --- 1. DATA INGESTION ---
+    print("Loading raw data...")
     housing_full = load_housing_data()
-    housing_full.to_parquet("datasets/housing/housing_full.parquet")
 
-
-
-    # Create income categories for stratification (predefined bins to avoid data snooping)
+    # --- 2. FEATURE ENGINEERING & CLEANING ---
+    # Create income categories for stratification to avoid data snooping
     housing_full["income_cat"] = pd.cut(housing_full["median_income"],
                                     bins=[0., 1.5, 3.0, 4.5, 6., np.inf],
                                     labels=[1, 2, 3, 4, 5])
     
-    # After noticing in the exploration.py file that there are some median incomes that are capped, I will remove these from the dataset, to prevent the model
-    # from learning this "artificial" cap and thus improving generalization to other datasets.
-    cap_values = [ 450000, 350000, 280000] 
+    # Remove artificial caps identified in exploration.py to improve generalization
+    cap_values = [450000, 350000, 280000] 
     max_income = 500000
-
-    # 2. Filter out the capped values
     housing_filtered = housing_full[housing_full["median_house_value"] < max_income].copy()
-
     housing_filtered = housing_filtered[~housing_filtered["median_house_value"].isin(cap_values)].reset_index(drop=True)
-    housing_filtered.to_parquet("datasets/housing/housing_filtered.parquet")
-    
 
-    
-    # 1. First split: 80% train+val, 20% test (stratified)
-    strat_train_val_set, strat_test_set = train_test_split(
-    housing_filtered, test_size=0.2, stratify=housing_filtered["income_cat"],
-    random_state=42)
+    # --- 3. DATA SPLITTING (THE SAFEGUARD) ---
+    # First split: 80% Training Block (for CV and final fit), 20% Test Set (Locked away)
+    strat_train_full_set, strat_test_set = train_test_split(
+        housing_filtered, test_size=0.2, stratify=housing_filtered["income_cat"],
+        random_state=42)
 
-    
-    # 2. Second split: 75% train, 25% val (stratified on train+val only)
-    strat_train_set, strat_val_set = train_test_split(
-    strat_train_val_set, test_size=0.25, stratify=strat_train_val_set["income_cat"],
-    random_state=42)
-    # Won't use the income_cat feature for modeling, so we drop it now to avoid data leakage
-    for set_ in (strat_train_set, strat_val_set, strat_test_set):
+    # Remove the stratification helper column
+    for set_ in (strat_train_full_set, strat_test_set):
         set_.drop("income_cat", axis=1, inplace=True)
 
-    # Make a copy of the originial data so that we can use it later
-    # Separate the predictor features and the target labels as we don't want to include the target in the feature engineering steps
-    housing_train_features = strat_train_set.drop("median_house_value", axis=1) # drop() creates a copy of the default and does not affect the origninal.
-    housing_train_labels = strat_train_set["median_house_value"].copy()
-
-    # Save the Datasets to prevent data leakage and allow for reproducability.
-    housing_train_features.to_csv("datasets/housing/housing_train_features.csv", index=False)
-    housing_train_labels.to_csv("datasets/housing/housing_train_labels.csv", index=False)
-    # Validation
-    housing_val_features = strat_val_set.drop("median_house_value", axis=1)
-    housing_val_labels = strat_val_set["median_house_value"].copy()
-
-    housing_val_features.to_csv("datasets/housing/housing_val_features.csv", index=False)
-    housing_val_labels.to_csv("datasets/housing/housing_val_labels.csv", index=False)
-
-
-    # Test
-    housing_test_features = strat_test_set.drop("median_house_value", axis=1)
-    housing_test_labels = strat_test_set["median_house_value"].copy()
-
-    housing_test_features.to_csv("datasets/housing/housing_test.csv", index=False)
-    housing_test_labels.to_csv("datasets/housing/housing_test_labels.csv", index=False)
-    print("✓ Data splits saved to datasets/housing/ using housing_* convention")
+    # Prepare features and labels
+    X_train_full = strat_train_full_set.drop("median_house_value", axis=1)
+    y_train_full = strat_train_full_set["median_house_value"].copy()
     
-    ###########################################################
-    model_types = ["xgboost", "linear" ]
-    for m_type in model_types:
-        print(f"\n--- Training {m_type.upper()} Model ---")
-        
-        # Create the specific pipeline
-        model = create_full_pipeline(model_type=m_type)
-        
-        # Fit on your existing features and labels
-        print(f"Fitting {m_type}...")
-        model.fit(housing_train_features, housing_train_labels)
-        
-        # Save each model with a unique name in your models/ folder
-        model_filename = f"models/housing_model_{m_type}.pkl"
-        joblib.dump(model, model_filename)
-        print(f"✓ Success! Model saved as {model_filename}")
+    X_test = strat_test_set.drop("median_house_value", axis=1)
+    y_test = strat_test_set["median_house_value"].copy()
 
-    print("\nAll models trained and serialized successfully.")
+    # --- 4. PERSISTENCE ---
+    # Save the split data so evaluate.py and audit.py can use them
+    Path("datasets/housing").mkdir(parents=True, exist_ok=True)
+    X_train_full.to_csv("datasets/housing/housing_train_full_features.csv", index=False)
+    y_train_full.to_csv("datasets/housing/housing_train_full_labels.csv", index=False)
+    X_test.to_csv("datasets/housing/housing_test.csv", index=False)
+    y_test.to_csv("datasets/housing/housing_test_labels.csv", index=False)
+    print("✓ Production data splits saved.")
 
+    # --- 5. FINAL PRODUCTION FIT ---
+    # We now fit on 100% of the non-test data for maximum predictive power.
+    print("\nTraining final production model (XGBoost)...")
+    # ... [Data Cleaning & Splitting Logic Above] ...
+
+    # --- PRODUCTION TOGGLE ---
+    # Set this to True only AFTER you have confirmed the winner in evaluate.py
+    RUN_FINAL_FIT = False
+
+    if RUN_FINAL_FIT:
+        print("\n--- Training Final Production Model ---")
+        final_model = create_full_pipeline(model_type="xgboost")
+        final_model.fit(X_train_full, y_train_full)
+        joblib.dump(final_model, "models/housing_model.pkl")
+        print("✓ Production model updated.")
+    else:
+        print("\n[INFO] Skipping final fit. Run evaluate.py next to confirm model choice.")
