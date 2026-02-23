@@ -1,40 +1,31 @@
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import StratifiedKFold, cross_val_score
-from src.pipeline import create_full_pipeline # Using the blueprint factory
 import time
+import matplotlib.pyplot as plt
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+from src.pipeline import create_full_pipeline
 
-# 1. Load the FULL training data block (80% of total data)
-# This is the combined set you saved in main.py
+# 1. Load Data (Ensuring we use the combined block)
 X_train_full = pd.read_csv("datasets/housing/housing_train_full_features.csv")
 y_train_full = pd.read_csv("datasets/housing/housing_train_full_labels.csv").iloc[:, 0]
 
-# 2. Recreate income categories for StratifiedKFold logic
-# We must stratify by the same bins used in the original split
+# 2. Stratification Logic
 income_cat = pd.cut(X_train_full["median_income"],
                     bins=[0., 1.5, 3.0, 4.5, 6., np.inf],
                     labels=[1, 2, 3, 4, 5])
-
-# 3. Setup the StratifiedKFold iterator
-# 5 folds is the industry standard for medium-sized datasets
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
-# 4. Run the Model Tournament
-model_types = ["linear", "xgboost", "random_forest", "decision_tree"] # You can add more model types here as you experiment
-results = {}
+# 3. Tournament Loop
+model_types = ["linear", "xgboost", "random_forest", "decision_tree"] 
+plot_data = []
 
 print("--- Starting Model Tournament (5-Fold Stratified CV) ---")
 
 for m_type in model_types:
     print(f"\nEvaluating {m_type.upper()}...")
-    
-    # Get a fresh, UNTRAINED blueprint
     pipeline_blueprint = create_full_pipeline(model_type=m_type)
     
-    # Run Cross-Validation
-    # This fits/evaluates the blueprint 5 times on 5 different folds
     start_time = time.perf_counter()
-
     cv_scores = cross_val_score(
         pipeline_blueprint, 
         X_train_full, 
@@ -42,37 +33,52 @@ for m_type in model_types:
         scoring="neg_root_mean_squared_error",
         cv=skf.split(X_train_full, income_cat)
     )
-
-    end_time = time.perf_counter()
-    duration = end_time - start_time
-    
-    # Convert negative scores to positive RMSE
+    duration = time.perf_counter() - start_time
     rmse_scores = -cv_scores
-    results[m_type] = rmse_scores
+
+    # --- CHANGE 1: Capture Std Dev in plot_data ---
+    plot_data.append({
+        "Model": m_type.upper(),
+        "RMSE": rmse_scores.mean(),
+        "Std": rmse_scores.std(),   # Added this
+        "Time": duration 
+    })
     
     print(f"  Mean RMSE: ${rmse_scores.mean():,.2f}")
     print(f"  Std Dev:   ${rmse_scores.std():,.2f}")
     print(f"  Training Time: {duration:.2f} seconds")
-    # ... [Data Cleaning & Splitting Logic Above] ...
 
-    # --- PRODUCTION TOGGLE ---
-    # Set this to True only AFTER you have confirmed the winner in evaluate.py
-    RUN_FINAL_FIT = False
+# 4. Create Plot
+df_results = pd.DataFrame(plot_data)
+fig, ax1 = plt.subplots(figsize=(10, 6))
 
-    if RUN_FINAL_FIT:
-        print("\n--- Training Final Production Model ---")
-        final_model = create_full_pipeline(model_type="xgboost")
-        final_model.fit(X_train_full, y_train_full)
-        joblib.dump(final_model, "models/housing_model.pkl")
-        print("✓ Production model updated.")
-    else:
-        print("\n[INFO] Skipping final fit. Run evaluate.py next to confirm model choice.")
-# 5. Final Comparison
-#print("\n" + "="*30)
-#print("FINAL RECOMMENDATION")
-##print("="*30)
-#best_model = min(results, key=lambda k: results[k].mean())
-#improvement = (results["linear"].mean() - results["xgboost"].mean()) / results["linear"].mean() * 100
+# --- CHANGE 2: Add yerr=df_results["Std"] ---
+color_rmse = 'tab:blue'
+ax1.set_xlabel('Model Type', fontweight='bold')
+ax1.set_ylabel('Mean RMSE (Lower is Better)', color=color_rmse, fontweight='bold')
 
-#print(f"Winner: {best_model.upper()}")
-#print(f"Performance Gain over Baseline: {improvement:.2f}%")
+ax1.bar(
+    df_results["Model"], 
+    df_results["RMSE"], 
+    yerr=df_results["Std"],       # This draws the error bars
+    capsize=10,                   # Adds the horizontal 'caps'
+    color=color_rmse, 
+    alpha=0.6, 
+    width=0.4,
+    label='Mean RMSE ± Std Dev'
+)
+ax1.tick_params(axis='y', labelcolor=color_rmse)
+
+# Plot Time (Line Chart remains same)
+ax2 = ax1.twinx()
+color_time = 'tab:red'
+ax2.set_ylabel('Training Time (Seconds)', color=color_time, fontweight='bold')
+ax2.plot(df_results["Model"], df_results["Time"], color=color_time, marker='o', linewidth=2, markersize=8, label='Train Time')
+ax2.tick_params(axis='y', labelcolor=color_time)
+
+plt.title('Performance, Stability & Efficiency Benchmark', fontsize=14, fontweight='bold')
+plt.grid(axis='y', linestyle='--', alpha=0.3)
+fig.tight_layout()
+
+plt.savefig("notebooks/model_benchmarking.png")
+print("\n✓ Benchmarking plot with error bars saved.")

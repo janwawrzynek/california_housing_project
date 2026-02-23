@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
     # --- PRODUCTION TOGGLE ---
     # Set this to True only AFTER you have confirmed the winner in evaluate.py
-    RUN_FINAL_FIT = False
+    RUN_FINAL_FIT = True
 
     if RUN_FINAL_FIT:
         print("\n--- Training Final Production Model ---")
