@@ -5,6 +5,7 @@ import pandas as pd
 import tarfile
 import urllib.request
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
 # Import your factory and custom logic
 from src.pipeline import create_full_pipeline
@@ -31,6 +32,13 @@ if __name__ == "__main__":
                                     bins=[0., 1.5, 3.0, 4.5, 6., np.inf],
                                     labels=[1, 2, 3, 4, 5])
     
+
+    cat_counts = housing_full["income_cat"].value_counts().sort_index()
+    cat_counts.plot.bar(rot = 0, grid = True)
+    plt.xlabel("Income Category")
+    plt.ylabel("Number of districts")
+    plt.savefig("notebooks/income_category_distribution.png")
+
     # Remove artificial caps identified in exploration.py to improve generalization
     cap_values = [450000, 350000, 280000] 
     max_income = 500000
@@ -70,13 +78,13 @@ if __name__ == "__main__":
 
     # --- PRODUCTION TOGGLE ---
     # Set this to True only AFTER you have confirmed the winner in evaluate.py
-    RUN_FINAL_FIT = True
+    RUN_WINNER_FIT = True
 
-    if RUN_FINAL_FIT:
+    if RUN_WINNER_FIT:
         print("\n--- Training Final Production Model ---")
-        final_model = create_full_pipeline(model_type="xgboost")
-        final_model.fit(X_train_full, y_train_full)
-        joblib.dump(final_model, "models/housing_model.pkl")
+        winner_model = create_full_pipeline(model_type="xgboost")
+        winner_model.fit(X_train_full, y_train_full)
+        joblib.dump(winner_model, "models/housing_model_xgboost.pkl")
         print("✓ Production model updated.")
     else:
         print("\n[INFO] Skipping final fit. Run evaluate.py next to confirm model choice.")

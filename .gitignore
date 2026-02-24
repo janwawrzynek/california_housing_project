@@ -1,18 +1,21 @@
-# Data and Models
-datasets/
-data/
-models/*.pkl
-
-# Python environment and cache
-__pycache__/
+# Local environments
 .venv/
 env/
 venv/
-*.py[cod]
+ENV/
 
-# OS specific files
-.DS_Store
-Thumbs.db
+# Python junk
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Git history
+.git/
+.gitignore
 
 # Notebook checkpoints
 .ipynb_checkpoints/
+
+# Only ignore datasets if they are massive or you are mounting them

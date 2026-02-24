@@ -6,7 +6,7 @@ from scipy import stats
 
 # 1. Load the finalized model and the "locked" test data
 print("Loading production model and test set...")
-model = joblib.load("models/housing_model.pkl")
+model = joblib.load("models/housing_model_tuned.pkl")
 X_test = pd.read_csv("datasets/housing/housing_test.csv")
 y_test = pd.read_csv("datasets/housing/housing_test_labels.csv").iloc[:, 0]
 
