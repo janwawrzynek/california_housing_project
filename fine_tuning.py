@@ -50,12 +50,10 @@ print("Best Params:", rnd_search.best_params_)
 joblib.dump(best_tuned_model, "models/housing_model_tuned.pkl")
 print(" Tuned model saved as housing_model_tuned.pkl")
 
-# ... (Previous code: Search, Fit, and Test Evaluation) ...
 
-# 1. DEFINE YOUR TOURNAMENT BENCHMARK (Manually enter from your evaluate.py results)
-# Replace these numbers with the ones from your 'Evaluating XGBOOST' terminal output
-benchmark_mean_rmse = 38912.20  # Example value
-benchmark_std_rmse = 1267.88  # Example value
+# 1. DEFINE  TOURNAMENT BENCHMARK (Manually enter from your evaluate.py results)
+benchmark_mean_rmse = 38912.20  
+benchmark_std_rmse = 1267.88  
 
 # 2. EXTRACT TUNED RESULTS
 tuned_mean_rmse = -rnd_search.best_score_
